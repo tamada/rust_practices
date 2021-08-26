@@ -8,7 +8,7 @@ This repository contains the following commands (Typical commands in UNIX).
 * [lgrep](lgrep)
     * Lesser `grep`.
 * [Tee](tee)
-* [Date](date)
+* [`now`](now)
 * [Uniq](uniq)
 * [Head](head)
 * [Tail](tail)

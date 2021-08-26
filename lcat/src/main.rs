@@ -88,7 +88,7 @@ impl Liner for SqueezeLiner {
 }
 
 fn main() {
-    let matches =  App::new("cat")
+    let matches =  App::new("lcat")
         .version(crate_version!())
         .author(crate_authors!())
         .about("Concatnate the given files.")
