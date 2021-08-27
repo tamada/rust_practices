@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::Path;
 
 pub trait Grepper {
-    fn perform(self, file: File) -> Vec<String>;
+    fn perform(&self, file: File) -> Vec<(usize, String)>;
 }
 
 pub struct DefaultGrepper {
@@ -21,25 +21,25 @@ impl DefaultGrepper {
 }
 
 impl Grepper for DefaultGrepper {
-    fn perform(self, file: File) -> Vec<String> {
+    fn perform(&self, file: File) -> Vec<(usize, String)> {
         let input = BufReader::new(file);
         let mut vec = Vec::new();
-        for line in input.lines() {
-            let unwrappedLine = line.unwrap();
-            if unwrappedLine.contains(&self.pattern) {
-                vec.push(unwrappedLine);
+        for (index, line) in input.lines().enumerate() {
+            let unwrapped_line = line.unwrap();
+            if unwrapped_line.contains(&self.pattern) {
+                vec.push((index, unwrapped_line));
             }
         }
-        return vec;
+        vec
     }
 }
 
 fn build(matches: ArgMatches) -> Box<dyn Grepper> {
     let pattern = matches.value_of("PATTERN").unwrap().to_string();
-    return Box::new(DefaultGrepper::new(pattern));
+    Box::new(DefaultGrepper::new(pattern))
 }
 
-fn perform_each(grepper: &Box<dyn Grepper>, file_name: &String) -> Vec<String> {
+fn perform_each(grepper: &Box<dyn Grepper>, file_name: &String) -> Vec<(usize, String)> {
     let file_path = Path::new(&file_name);
     let display = file_path.display();
     let file = match File::open(&file_path) {
@@ -49,9 +49,9 @@ fn perform_each(grepper: &Box<dyn Grepper>, file_name: &String) -> Vec<String> {
     grepper.perform(file)
 }
 
-fn print_result(file_name: String, results: Vec<String>) {
+fn print_result(file_name: String, results: Vec<(usize, String)>) {
     for result in results {
-        println!("{}: {}", file_name, result)
+        println!("{} ({}): {}", file_name, result.0, result.1)
     }
 }
 
