@@ -8,6 +8,33 @@ pub trait Grepper {
     fn perform(&self, file: File) -> Vec<(usize, String)>;
 }
 
+pub struct CaseSensitiveGrepper {
+    pattern: String,
+}
+
+impl CaseSensitiveGrepper {
+    pub fn new(given_pattern: String) -> CaseSensitiveGrepper {
+        CaseSensitiveGrepper {
+            pattern: given_pattern.to_lowercase(),
+        }
+    }
+}
+
+impl Grepper for CaseSensitiveGrepper {
+    fn perform(&self, file: File) -> Vec<(usize, String)> {
+        let input = BufReader::new(file);
+        let mut vec = Vec::new();
+        for (index, line) in input.lines().enumerate() {
+            let unwrapped_line = line.unwrap();
+            let lower_line = &unwrapped_line.to_lowercase();
+            if lower_line.contains(&self.pattern) {
+                vec.push((index, unwrapped_line));
+            }
+        }
+        vec
+    }
+}
+
 pub struct DefaultGrepper {
     pattern: String,
 }
@@ -36,6 +63,9 @@ impl Grepper for DefaultGrepper {
 
 fn build(matches: ArgMatches) -> Box<dyn Grepper> {
     let pattern = matches.value_of("PATTERN").unwrap().to_string();
+    if matches.is_present("ignore-case") {
+        return Box::new(CaseSensitiveGrepper::new(pattern));
+    }
     Box::new(DefaultGrepper::new(pattern))
 }
 
@@ -81,6 +111,9 @@ fn main() {
                 .long("fixed")
                 .short("f"),
         )
+        .arg(Arg::from_usage(
+            "-i --ignore-case 'case sensitive matching'",
+        ))
         .arg(
             Arg::with_name("PATTERN")
                 .help("specifies the pattern for matching.")
