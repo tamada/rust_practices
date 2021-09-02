@@ -12,7 +12,7 @@ USAGE:
 
 FLAGS:
     -a, --apend            append the output to the files rather than overwriting them.
-    -i, --ignore-sigint    ignore the SIGINT signal (not implemented yet).
+    -i, --ignore-sigint    ignore the SIGINT signal.
 
 ARGS:
     <FILE>     A path name of an output file.

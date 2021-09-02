@@ -9,3 +9,4 @@ description = "pipe filtering"
 
 [dependencies]
 clap = "2.33.3"
+ctrlc = "3.2.0"

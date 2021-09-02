@@ -38,6 +38,16 @@ fn perform_tee(output: File, _option: Option) {
     }
 }
 
+fn ignore_sigint_ifneeded(flag: bool) {
+    if flag {
+        // https://rust-cli.github.io/book/in-depth/signals.html
+        ctrlc::set_handler(move || {
+            println!("received Ctrl+C!");
+        })
+        .expect("Error setting Ctrl-C handler");
+    }
+}
+
 fn perform(matches: ArgMatches) {
     let option = create_option(&matches);
     let dest_name = match matches.value_of("FILE") {
@@ -55,6 +65,7 @@ fn perform(matches: ArgMatches) {
         Err(msg) => panic!("{}: {}", display, msg.to_string()),
         Ok(output) => output,
     };
+    ignore_sigint_ifneeded(option.ignore_sigint);
     perform_tee(output, option);
 }
 
