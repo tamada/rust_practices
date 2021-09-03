@@ -8,9 +8,11 @@ This repository contains the following commands (Typical commands in UNIX).
 - [lgrep](lgrep) v0.1.0
   - Lesser `grep`.
 - [Tee](tee)
+  - pipe filtering
 - [`now`](now)
 - [Uniq](uniq)
-- [Head](head)
-- [Tail](tail)
+  - delete duplicated lines.
+- Head
+- Tail
 - [Tac](tac) v0.1.0
   - printing the given files in the reverse order.
