@@ -24,4 +24,4 @@ This repository contains the following commands (Typical commands in UNIX).
 
 The logo of this repository is created by Bing Image Generator.
 
-![logo](site/asset/logo.png)
+![logo](site/assets/logo.png)
