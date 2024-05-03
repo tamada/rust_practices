@@ -1,12 +1,12 @@
 [package]
 name = "lcat"
 version = "0.1.0"
-authors = ["Haruaki Tamada <tamada@users.noreply.github.com>"]
-edition = "2018"
+authors = ["Haruaki Tamada <tamada.f@ke.cafebabe.jp>"]
+edition = "2021"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-	clap = "2.33"
-	isatty = "0.1"
+	clap = { version = "4.5.4", features = ["derive"] }
+	atty = "0.2.14"

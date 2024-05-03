@@ -1,168 +1,82 @@
 use std::fs::File;
+use std::io::Read;
+use std::io::Stdin;
 use std::path::Path;
 use std::io::BufRead;
 use std::io::BufReader;
-use clap::{crate_authors,crate_version,App,ArgMatches,Arg};
+use std::path::PathBuf;
+use std::process::exit;
+use clap::Parser;
 
-extern crate isatty;
-use isatty::stdout_isatty;
+use cli::CliOpts;
+use liner::create_liner;
+use liner::Liner;
 
-pub trait Liner {
-    fn decorate(&mut self, line: String) -> Option<String>;
+mod cli;
+mod liner;
+
+fn print_file(mut liner: &mut Box<dyn Liner>, path: PathBuf) -> Result<(), Error> {
+    let file_path = Path::new(&path);
+    let file = match File::open(file_path) {
+        Err(_) => return Err(Error::FileNotFound(path)),
+        Ok(file) => file,
+    };
+    let input = BufReader::new(file);
+    print_impl(&mut liner, input)
 }
 
-pub struct DefaultLiner {
-}
-
-impl DefaultLiner {
-    pub fn new() -> DefaultLiner {
-        DefaultLiner{}
-    }
-}
-impl Liner for DefaultLiner {
-    fn decorate(&mut self, line: String) -> Option<String> {
-        return Some(line)
-    }
-}
-
-pub struct LinedLiner {
-    number: i32,
-}
-
-impl LinedLiner {
-    pub fn new() -> LinedLiner {
-        LinedLiner{number: 0}
-    }
-}
-
-impl Liner for LinedLiner {
-    fn decorate(&mut self, line: String) -> Option<String> {
-        self.number = self.number + 1;
-        return Some(format!("{:5}   {}", self.number, line))
-    }
-}
-
-pub struct NonBlankLinedLiner {
-    number: i32,
-}
-
-impl NonBlankLinedLiner {
-    pub fn new() -> NonBlankLinedLiner {
-        return NonBlankLinedLiner{number: 0}
-    }
-}
-
-impl Liner for NonBlankLinedLiner {
-    fn decorate(&mut self, line: String) -> Option<String> {
-        if line == "" {
-            return Some(format!("      "))
+fn print_impl<T: Read+Sized>(liner: &mut Box<dyn Liner>, input: BufReader<T>) -> Result<(), Error> {
+    for line in input.lines() {
+        if let Some(line) = liner.decorate(line.unwrap()) {
+            println!("{}", line);
         }
-        self.number = self.number + 1;
-        Some(format!("{:5}   {}", self.number, line))
     }
+    Ok(())
 }
 
-pub struct SqueezeLiner {
-    prev_blank: bool
+#[derive(Debug)]
+pub enum Error {
+    FileNotFound(PathBuf),
 }
 
-impl SqueezeLiner {
-    pub fn new() -> SqueezeLiner {
-        return SqueezeLiner{prev_blank: false}
+fn perform(opts: CliOpts) -> Result<(), Vec<Error>> {
+    let target = opts.files.clone();
+    let mut liner = create_liner(&opts);
+    let show_header = target.len() > 1 && atty::is(atty::Stream::Stdout);
+    let mut errs = vec![];
+    if target.len() == 0 {
+        let reader = BufReader::<Stdin>::new(std::io::stdin());
+        match print_impl(&mut liner, reader) {
+            Err(e) => errs.push(e),
+            _ => (),
+        }
+    } else {
+        for file in target {
+            if show_header {
+                println!("----------\n{}\n----------\n", file.display());
+            }
+            match print_file(&mut liner, file) {
+                Err(e) => errs.push(e),
+                _ => (),
+            }
+        }
     }
-}
-
-impl Liner for SqueezeLiner {
-    fn decorate(&mut self, line: String) -> Option<String> {
-        let r = line.trim();
-        if r != "" {
-            self.prev_blank = false;
-            return Some(line)
-        }
-        if self.prev_blank {
-            return None
-        }
-        self.prev_blank = true;
-        return Some(line)
+    if errs.len() > 0 {
+        Err(errs)
+    } else {
+        Ok(())
     }
 }
 
 fn main() {
-    let matches =  App::new("lcat")
-        .version(crate_version!())
-        .author(crate_authors!())
-        .about("Concatnate the given files.")
-        .arg(
-            Arg::with_name("numbers")
-                .short("n")
-                .long("numbers")
-                .help("Prints the line with line numbers, start at 1.")
-        )
-        .arg(
-            Arg::with_name("non-blank")
-                .short("b")
-                .long("numbers-non-blank")
-                .help("Prints the non-blank line with line numbers, start at 1.")
-        )
-        .arg(
-            Arg::with_name("squeeze")
-                .short("s")
-                .long("squeeze")
-                .help("Squeezes multiple adjacent empty lines, causing the output to be single .")
-        )
-        .arg(
-            Arg::with_name("FILEs")
-                .help("Files for printing the contents.")
-                .required(false)
-                .multiple(true)
-                .index(1)
-        )
-        .get_matches();
-
-    perform(matches)
-}
-
-fn perform(matches: ArgMatches) {
-    let paths = matches
-        .values_of("FILEs")
-        .unwrap()
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>();
-
-    for path in &paths {
-        let mut liner = build(&matches);
-        print_file(&mut liner, path.to_string(), paths.len() > 1);
-    }
-}
-
-fn build(matches: &ArgMatches) -> Box<dyn Liner> {
-    if matches.is_present("numbers") {
-        return Box::new(LinedLiner::new())
-    } else if matches.is_present("non-blank") {
-        return Box::new(NonBlankLinedLiner::new())
-    } else if matches.is_present("squeeze") {
-        return Box::new(SqueezeLiner::new())
-    }
-    return Box::new(DefaultLiner::new())
-}
-
-fn print_file(liner: &mut Box<dyn Liner>, path: String, show_header: bool) {
-    let file_path = Path::new(&path);
-    let display = file_path.display();
-    let file = match File::open(&file_path) {
-        Err(why) => panic!("{}: {}", display, why.to_string()),
-        Ok(file) => file,
-    };
-    if show_header && stdout_isatty() {
-        println!("----------");
-        println!("{}", display);
-        println!("----------");
-    }
-    let input = BufReader::new(file);
-    for line in input.lines() {
-        let output = liner.decorate(line.unwrap());
-        if output.is_some() {
-            println!("{}", output.unwrap())
+    let opts = CliOpts::parse();
+    match perform(opts) {
+        Err(errs) => {
+            for err in errs {
+                println!("Error: {:?}", err)
+            }
+            exit(1);
         }
+        _ => (),
     }
 }
